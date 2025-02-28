@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Identity.Client;
 
 namespace VCC_Projekt.Data
 {
@@ -30,6 +31,9 @@ namespace VCC_Projekt.Data
 
         public DbSet<UserInGruppe> UserInGruppes { get; set; }
 
+        public DbSet<LogKat> LogKats { get; set; }
+        
+        public DbSet<EventLog> EventLogs { get; set; }
     }
 
 
