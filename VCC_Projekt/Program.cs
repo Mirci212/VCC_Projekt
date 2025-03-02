@@ -42,7 +42,8 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
 builder.Services.Configure<MailOptions>(
     builder.Configuration.GetSection(MailOptions.MailOptionsKey));
 
-// builder.Services.AddSingleto
+builder.Services.AddControllers();
+
 builder.Services.AddMudServices();
 
 var app = builder.Build();
@@ -60,6 +61,7 @@ else
 }
 
 app.UseHttpsRedirection();
+app.MapControllers();
 
 app.UseStaticFiles();
 app.UseAntiforgery();
