@@ -1,0 +1,312 @@
+﻿@page "/preview-event/{eventId:int}"
+@using Microsoft.AspNetCore.Authorization
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@attribute [Authorize(Roles = "Admin,Editor")]
+
+
+@if (isLoading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (!string.IsNullOrEmpty(accessDeniedMessage))
+{
+    <PageTitle>Error</PageTitle>
+    <header>
+        <h1 class="text-danger">Error</h1>
+        <p class="text-danger">@accessDeniedMessage</p>
+    </header>
+}
+else
+{
+    <PageTitle>@Event.Bezeichnung - Level @CurrentLevel.Levelnr</PageTitle>
+
+    <MudGrid Justify="Justify.Center" Spacing="2">
+        <!-- TIMER OBEN MITTIG -->
+        <MudItem xs="12" Style="text-align: center;">
+            <MudPaper Elevation="3" Class="pa-2">
+                <MudText Typo="Typo.h5" Class="font-bold">
+                    ⏳ Zeit: <span id="timer">00:00:00</span> ❌Fehlversuche: @currFehlversuche 🏅Platzierung: keine
+                </MudText>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Progress Box (Links) -->
+        <MudItem xs="12" md="3">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">📊 Progress</MudText>
+                    @foreach (var level in Event.Levels)
+                    {
+                        <tr>
+                            <td>Level @level.Levelnr</td>
+                            <td>
+                                @if (AbsolviertLevels.Any(ab => ab.Level_LevelID == level.LevelID))
+                                {
+                                    var levelData = AbsolviertLevels.Where(le => le.Level_LevelID == level.LevelID).FirstOrDefault();
+                                    <p class="level-detail">⏱ Zeit: @(levelData.BenoetigteZeit.HasValue ? levelData.BenoetigteZeit.Value.ToString(@"hh\:mm\:ss") : "")</p>
+                                    <p class="level-detail">❌ Fehlversuche: @levelData.Fehlversuche</p>
+                                    <p class="level-detail">⏳ Strafminuten: @(levelData.Fehlversuche * Event.StrafminutenProFehlversuch) min</p>
+                                }
+                                else
+                                {
+                                    <p class="level-not-completed">Noch nicht geschafft</p>
+                                }
+                            </td>
+                        </tr>
+                    }
+
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Rangliste Box -->
+            <MudCard Elevation="3" Class="mt-3">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">🏆 Aktuelle Rangliste</MudText>
+                    <MudDivider />
+                    <MudTable Striped="true" Items="currRangliste">
+                        <HeaderContent>
+                            <MudTh>Platz</MudTh>
+                            <MudTh>Team Name</MudTh>
+                            <MudTh>Letztes Abgeschlossene Level</MudTh>
+                            <MudTh>Gebrauchte Zeit seit Event-Beginn (inkl Strafzeit)</MudTh>
+                            <MudTh>Fehlversuche gesamt</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.Rang</MudTd>
+                            <MudTd>@(context.Gruppenname != null ? context.Gruppenname + " (Team)" : context.GruppenleiterId + " (Einzelspieler)")</MudTd>
+                            <MudTd>@context.AnzahlLevel</MudTd>
+                            <MudTd>@(context.GebrauchteZeit.HasValue ? context.GebrauchteZeit.Value.ToString(@"hh\:mm\:ss") : "")</MudTd>
+                            <MudTd>@context.GesamtFehlversuche</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Downloads & Abgabe Box (Mitte) -->
+        <MudItem xs="12" md="7">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">📥 Downloads</MudText>
+                    <MudLink Href="@($"/api/files/{CurrentLevel.LevelID.ToString()}")" download="@($"Level {CurrentLevel.Levelnr}.pdf")">
+                        <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf" /> Level Description PDF
+                    </MudLink>
+                    <br />
+                    <MudLink Href="@($"/api/files/{CurrentLevel.LevelID.ToString()}/input/zip")" download="@($"level{CurrentLevel.Levelnr}.zip")" Target="_blank">
+                        <MudIcon Icon="@Icons.Material.Filled.FolderZip" /> Inputs (ZIP)
+                    </MudLink>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.h6">📤 Lösung hochladen</MudText>
+                    <MudGrid>
+                        @foreach (var aufgabe in CurrentLevel?.Aufgaben)
+                        {
+                            <MudItem xs="12">
+
+                                <MudGrid Justify="Justify.FlexStart" AlignItems="AlignItems.Center" Wrap="NoWrap" Spacing="3">
+                                    <!-- Download Link -->
+                                    <MudItem>
+                                        <MudLink Href="@($"/api/files/{CurrentLevel.LevelID.ToString()}/{aufgabe.AufgabenID}/input")" download="@($"level{CurrentLevel.Levelnr}_{aufgabe.Aufgabennr}.txt")">
+                                            <MudIcon Icon="@Icons.Material.Filled.Download" /> level@(CurrentLevel.Levelnr)_@aufgabe.Aufgabennr
+                                        </MudLink>
+                                    </MudItem>
+
+                                    <!-- Datei hochladen -->
+                                    <MudItem>
+                                        <MudFileUpload T="IBrowserFile" FilesChanged="@(e => UploadFile(e, aufgabe.AufgabenID))" Accept=".txt">
+                                            <ActivatorContent>
+                                                <MudGrid Justify="Justify.FlexStart" AlignItems="AlignItems.Center">
+                                                    <MudItem>
+                                                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CloudUpload">
+                                                            Datei hochladen
+                                                        </MudButton>
+                                                    </MudItem>
+
+                                                    @if (UploadedFiles.ContainsKey(aufgabe.AufgabenID))
+                                                    {
+                                                        var uploadedFile = UploadedFiles[aufgabe.AufgabenID];
+
+                                                        <MudItem>
+                                                            <MudText>
+                                                                <MudIcon Icon="@Icons.Material.Filled.AttachFile" /> @uploadedFile.FileName
+                                                                @if (uploadedFile.FileIsRight.HasValue)
+                                                                {
+                                                                    @if (uploadedFile.FileIsRight.Value)
+                                                                    {
+                                                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" />
+                                                                        <span>@($"+ {Event.StrafminutenProFehlversuch} min Strafminuten")</span>
+                                                                    }
+                                                                }
+                                                            </MudText>
+                                                        </MudItem>
+                                                    }
+                                                </MudGrid>
+                                            </ActivatorContent>
+                                        </MudFileUpload>
+                                    </MudItem>
+
+                                    <!-- Datei Absenden Button am Ende der Reihe -->
+                                    <MudItem>
+                                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(async () => await SubmitFile(aufgabe))">
+                                            ✅ Datei Absenden
+                                        </MudButton>
+                                    </MudItem>
+                                </MudGrid>
+
+
+                            </MudItem>
+                        }
+                    </MudGrid>
+
+                    @if (AllFilesSubmitted)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ProceedToNextLevel" Class="submit-button">
+                            🎯 Weiter zum nächsten Level
+                        </MudButton>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Team Info Box (Rechts) -->
+        <MudItem xs="12" md="2">
+            <MudCard Elevation="3">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">🎮 Test des Events</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+
+
+}
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    .title {
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 16px;
+    }
+
+    .subtitle {
+        font-weight: bold;
+        color: #34495e;
+        margin-bottom: 8px;
+    }
+
+    .level-title, .input-title {
+        font-weight: bold;
+        color: #2980b9;
+        margin-bottom: 4px;
+    }
+
+    .level-status, .input-status {
+        color: #7f8c8d;
+        margin-bottom: 4px;
+    }
+
+    .download-link {
+        color: #e74c3c;
+        text-decoration: none;
+        margin-bottom: 8px;
+    }
+
+        .download-link:hover {
+            text-decoration: underline;
+        }
+
+    .description {
+        color: #95a5a6;
+        margin-bottom: 16px;
+    }
+
+    .timer {
+        font-weight: bold;
+        margin-top: 16px;
+        font-size: 1.5em;
+    }
+
+    .submit-button {
+        margin-top: 20px;
+    }
+    /* Tabellenstil */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: Arial, sans-serif;
+        margin: 20px 0;
+    }
+
+    /* Tabellenüberschrift */
+    th {
+        text-align: left;
+        padding: 10px;
+        background-color: #f4f4f4;
+        font-weight: bold;
+    }
+
+    /* Tabellenzellen */
+    td {
+        padding: 8px;
+        border: 1px solid #ddd;
+        vertical-align: top;
+    }
+
+    /* Level-Detailstile */
+    .level-detail {
+        font-size: 14px;
+        margin: 5px 0;
+        color: #2ecc71; /* Grün für Zeit */
+    }
+
+    /* Fehler- oder nicht abgeschlossene Level */
+    .level-not-completed {
+        font-size: 14px;
+        color: #e74c3c; /* Rot für "Nicht geschafft" */
+        font-weight: bold;
+    }
+
+</style>
+
+<script>
+    window.startTimer = (eventDurationMinutes, dotNetHelper) => {
+        const timerElement = document.getElementById("timer");
+        let [hours, minutes, seconds] = timerElement.innerText.split(":").map(Number);
+
+        // Berechne das Limit in Sekunden
+        const maxTimeInSeconds = eventDurationMinutes * 60;
+        let elapsedSeconds = hours * 3600 + minutes * 60 + seconds;
+
+        const updateTimer = () => {
+            elapsedSeconds++;
+
+            // Umwandlung in hh:mm:ss
+            hours = Math.floor(elapsedSeconds / 3600);
+            minutes = Math.floor((elapsedSeconds % 3600) / 60);
+            seconds = elapsedSeconds % 60;
+
+            timerElement.innerText = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            // Prüfen, ob das Event-Limit erreicht ist
+            if (elapsedSeconds >= maxTimeInSeconds) {
+                clearInterval(timer); // Timer stoppen
+                location.reload()
+            }
+        };
+
+        let timer = setInterval(updateTimer, 1000);
+    };
+</script>

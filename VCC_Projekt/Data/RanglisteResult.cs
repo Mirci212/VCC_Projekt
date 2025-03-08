@@ -4,6 +4,25 @@ namespace VCC_Projekt.Data
 {
     public class RanglisteResult
     {
+        public RanglisteResult()
+        {
+
+        }
+        
+        public RanglisteResult(int rang, int gruppenID, string? gruppenname, string? gruppenleiterId, string teilnehmertyp, string abgeschlosseneLevel, int anzahlLevel, int gesamtFehlversuche, TimeSpan? maxBenötigteZeit, TimeSpan? gebrauchteZeit)
+        {
+            Rang = rang;
+            GruppenID = gruppenID;
+            Gruppenname = gruppenname;
+            GruppenleiterId = gruppenleiterId;
+            Teilnehmertyp = teilnehmertyp;
+            AbgeschlosseneLevel = abgeschlosseneLevel;
+            AnzahlLevel = anzahlLevel;
+            GesamtFehlversuche = gesamtFehlversuche;
+            MaxBenötigteZeit = maxBenötigteZeit;
+            GebrauchteZeit = gebrauchteZeit;
+        }
+
         public int Rang { get; set; }
         public int GruppenID { get; set; }
         public string? Gruppenname { get; set; }

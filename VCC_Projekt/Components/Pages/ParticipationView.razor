@@ -11,7 +11,7 @@
     <header>
         <h1 class="text-danger">Zugriff verweigert</h1>
         <p class="text-danger">@accessDeniedMessage</p>
-        @if (accessDeniedMessage == "Das Event ist bereits beendet.")
+        @if (accessDeniedMessage == "Das Event ist bereits beendet." || accessDeniedMessage == "Alle Levels abgeschlossen")
         {
             <MudLink Href="@($"{Dashboardlink}{Event.EventID}")">Hier kommen Sie zum Dashboard des Events</MudLink>
         }
@@ -82,7 +82,7 @@ else
                                 <MudTd>@context.Rang</MudTd>
                                 <MudTd>@(context.Gruppenname != null ? context.Gruppenname + " (Team)" : context.GruppenleiterId + " (Einzelspieler)")</MudTd>
                                 <MudTd>@context.AnzahlLevel</MudTd>
-                                <MudTd>@(context.GebrauchteZeit.HasValue ? context.MaxBenötigteZeit.Value.ToString(@"hh\:mm\:ss") : "")</MudTd>
+                                <MudTd>@(context.GebrauchteZeit.HasValue ? context.GebrauchteZeit.Value.ToString(@"hh\:mm\:ss") : "")</MudTd>
                                 <MudTd>@context.GesamtFehlversuche</MudTd>
                             </RowTemplate>
                         </MudTable>

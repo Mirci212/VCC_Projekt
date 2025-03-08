@@ -106,7 +106,15 @@ namespace VCC_Projekt.Components.Pages
                     .FirstOrDefault();
 
 
-                if (CurrentLevel == null) throw new ArgumentException("Kein Level gefunden");
+                if (CurrentLevel == null)
+                {
+                    if (Platzeriung != 0) throw new ArgumentException("Alle Levels abgeschlossen");
+                    else
+                    {
+                        throw new ArgumentException("Kein Level gefunden");
+                    }
+                }
+
 
                 if (CurrentLevel.Aufgaben.Count == 0) AllFilesSubmitted = true;
                 Fehlversuche = Group.Absolviert.Where(ab => ab.Level_LevelID == CurrentLevel.LevelID).Select(ab => ab.Fehlversuche).FirstOrDefault();
@@ -134,12 +142,6 @@ namespace VCC_Projekt.Components.Pages
             }
         }
 
-        public async Task OnTimerFinished()
-        {
-            OnInitialized();
-            return;
-        }
-
         private async Task UploadFile(IBrowserFile file, int aufgabenId)
         {
             using var stream = file.OpenReadStream();
@@ -154,7 +156,7 @@ namespace VCC_Projekt.Components.Pages
 
         private async Task SubmitFile(Aufgabe aufgabe)
         {
-            if (Event.Beginn.AddMinutes(Event.Dauer) < DateTime.Now)
+            if (Event.Beginn.AddMinutes((double)Event.Dauer) < DateTime.Now)
             {
                 OnInitialized();
                 return;
@@ -173,12 +175,6 @@ namespace VCC_Projekt.Components.Pages
                 bool isCorrect = uploadedContent == correctContent;
                 if (!isCorrect && uploadedFile.FileIsRight == null)
                 {
-                    TimeSpan benoetigteZeit = DateTime.Now - Event.Beginn;
-                    if (benoetigteZeit > TimeSpan.FromMinutes(Event.Dauer))
-                    {
-                        Navigation.NavigateTo(Dashboardlink + EventId);
-                        return;
-                    }
                     var absolviertLevel = await dbContext.GruppeAbsolviertLevels
                                                         .FirstOrDefaultAsync(a => a.Gruppe_GruppeID == Group.GruppenID && a.Level_LevelID == CurrentLevel.LevelID);
                     if (absolviertLevel != null)
@@ -219,7 +215,7 @@ namespace VCC_Projekt.Components.Pages
         private async Task ProceedToNextLevel()
         {
             TimeSpan benoetigteZeit = DateTime.Now - Event.Beginn;
-            if (benoetigteZeit > TimeSpan.FromMinutes(Event.Dauer))
+            if (benoetigteZeit > TimeSpan.FromMinutes((double)Event.Dauer))
             {
                 OnInitialized();
                 return;
@@ -242,9 +238,10 @@ namespace VCC_Projekt.Components.Pages
             absolviert.BenoetigteZeit = benoetigteZeit;
 
             await dbContext.SaveChangesAsync();
-            OnInitialized();
             AllFilesSubmitted = false;
+            OnInitialized();
         }
+        public record UploadedFile(string FileName, byte[] FileData, bool? FileIsRight = null);
     }
-    public record UploadedFile(string FileName, byte[] FileData, bool? FileIsRight = null);
+
 }

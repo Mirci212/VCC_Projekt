@@ -138,6 +138,10 @@ namespace VCC_Projekt.Components.Pages
 
                 ShowSnackbar("PDF erfolgreich hochgeladen!", Severity.Success);
             }
+            else
+            {
+                ShowSnackbar("Fehler beim Hochladen des PDFs! (max Size: 4MB)", Severity.Error);
+            }
         }
 
         private async Task UploadTaskFile(IBrowserFile file, int levelnr, int aufgabennr, string type)
@@ -160,6 +164,10 @@ namespace VCC_Projekt.Components.Pages
                 }
 
                 ShowSnackbar("Datei erfolgreich hochgeladen!", Severity.Success);
+            }
+            else
+            {
+                ShowSnackbar("Fehler beim Hochladen der Datei! (max Size. 4MB)", Severity.Error);
             }
         }
 
