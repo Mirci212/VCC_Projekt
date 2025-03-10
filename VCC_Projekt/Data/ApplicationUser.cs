@@ -32,6 +32,8 @@ public class ApplicationUser : IdentityUser<string>
     public List<Gruppe>? GruppenleiterNavigation { get; set; }
 
     public List<UserInGruppe>? UserInGruppe { get; set; }
+
+    public string Fullname => $"{Firstname} {Lastname}";
 }
 
 public class UserConfiguration : IEntityTypeConfiguration<ApplicationUser>

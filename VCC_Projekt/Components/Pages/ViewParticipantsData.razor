@@ -1,0 +1,95 @@
+﻿@page "/view-participantsData"
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+<MudContainer MaxWidth="MaxWidth.False">
+    <MudGrid>
+        <!-- Dropdown for Event Selection -->
+        <MudItem xs="12">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">Event auswählen</MudText>
+                    <MudSelect T="Event" Label="Event wählen" ValueChanged="@(async e => await OnEventSelected(e))" ToStringFunc="@(e => e != null ? $"{e.Bezeichnung} (EventId:{e.EventID})" : "")">
+                        @foreach (var ev in _events)
+                        {
+                            <MudSelectItem Value="@ev">@ev.Bezeichnung (@ev.Beginn)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <!-- Space between Dropdown and DataGrid -->
+        <MudItem xs="12" Class="mt-4">
+            <!-- Empty space -->
+        </MudItem>
+        <!-- DataGrid for Participants -->
+        <MudItem xs="12">
+            <div class="datagrid @(_selectedEvent.EventID == 0 ? "disabled" : "")" aria-disabled="@(_selectedEvent.EventID == 0)">
+                @if (_isLoading)
+                {
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                }
+                else if (_participants.Count == 0 && _selectedEvent.EventID != 0)
+                {
+                    <MudAlert Severity="Severity.Info">Keine Teilnehmer für dieses Event gefunden.</MudAlert>
+                }
+                else
+                {
+                    <MudDataGrid T="Participants" Items="@_participants.Where(_quickFilter)" ColumnResizeMode="ResizeMode.Column"
+                                 SortMode="SortMode.Multiple" Filterable="true" ReadOnly="true" QuickFilter="@_quickFilter">
+                        <ToolBarContent>
+                            <MudText Typo="Typo.h6">Teilnehmer und Gruppen</MudText>
+                            <MudSpacer />
+                            <MudTextField @bind-Value="_searchString"
+                                          Placeholder="Search"
+                                          Adornment="Adornment.Start"
+                                          Immediate="true"
+                                          AdornmentIcon="@Icons.Material.Filled.Search"
+                                          IconSize="Size.Medium"
+                                          Class="mt-0" />
+                        </ToolBarContent>
+                        <Columns>
+                            <HierarchyColumn T="Participants" ButtonDisabledFunc="@(x => x.Type != "Team")" />
+                            <PropertyColumn Property="p => p.Name" Title="Name" />
+                            <PropertyColumn Property="p => p.Type" Title="Typ" />
+                            <PropertyColumn Property="@(p => p.Members != null ? string.Join(", ", p.Members.Select(m => m.User.UserName ?? "")) : "")" Title="Mitglieder" />
+                        </Columns>
+                        <ChildRowContent>
+                            <MudDataGrid T="MemberInfo" Items="@context.Item.Members">
+                                <Columns>
+                                    <PropertyColumn Property="u => u.User.Email" Title="Email" />
+                                    <PropertyColumn Property="u => u.User.UserName" Title="Benutzername" />
+                                    <PropertyColumn Property="u => u.User.Fullname" Title="Name" />
+                                    <PropertyColumn Property="u => u.MemberType" Title="Mitglied Typ" />
+                                </Columns>
+                            </MudDataGrid>
+                        </ChildRowContent>
+                    </MudDataGrid>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+
+<style>
+    .datagrid {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        opacity: 1;
+        transform: scaleY(1);
+        transform-origin: top;
+    }
+
+        .datagrid.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            transform: scaleY(0.9);
+        }
+        /* Ensure the DataGrid has the same width as the dropdown */
+        .datagrid .mud-data-grid {
+            width: 100%;
+        }
+    /* Add space between the dropdown and the DataGrid */
+    .mt-4 {
+        margin-top: 1.5rem; /* Adjust this value as needed */
+    }
+</style>
