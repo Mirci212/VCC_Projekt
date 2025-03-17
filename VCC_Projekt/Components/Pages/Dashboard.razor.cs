@@ -22,6 +22,7 @@ namespace VCC_Projekt.Components.Pages
         {
             try
             {
+                // TODO
                 var now = DateTime.Now;
                 _events = dbContext.Events
                     .Where(x => x.Beginn <= now && x.Beginn.AddMinutes(x.Dauer) > now)
