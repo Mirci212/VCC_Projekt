@@ -1,68 +1,65 @@
-﻿@page "/dashboard"
+﻿@page "/dashboard/{EventId:int}"
 
-@if (_events.Count > 1)
+@if (accessDenied)
 {
-    <MudText Typo="Typo.h6">Event auswählen</MudText>
-    <MudSelect T="Event" @bind-Value="_selectedEvent" ToStringFunc="@(e => e != null ? $"{e.Bezeichnung} (EventId:{e.EventID})" : "")">
-        @foreach (var ev in _events)
-        {
-            <MudSelectItem Value="@ev">@ev.Bezeichnung (@ev.Beginn)</MudSelectItem>
-        }
-    </MudSelect>
-}
-else if (_events.Count == 1)
-{
-    <MudText Typo="Typo.h6">Dashboard @_events[0].Bezeichnung</MudText>
+    <PageTitle>Zugriff verweigert</PageTitle>
+    <header>
+        <h1 class="text-danger">Zugriff verweigert</h1>
+        <p class="text-danger">@accessDeniedMessage</p>
+    </header>
 }
 else
 {
-    <MudText Typo="Typo.h6">Keine Veranstaltungen finden derzeit statt...</MudText>
-}
-
-@if (_selectedEvent != null)
-{
-    <MudTable Items="@_rankingList" Hover="true" Striped="true" Dense="true" RowsPerPage="10">
-        <HeaderContent>
-            <MudTh>Rank</MudTh>
-            <MudTh>GruppenID</MudTh>
-            <MudTh>Gruppenname</MudTh>
-            <MudTh>GruppenleiterId</MudTh>
-            <MudTh>Teilnehmertyp</MudTh>
-            <MudTh>AbgeschlosseneLevel</MudTh>
-            <MudTh>AnzahlLevel</MudTh>
-            <MudTh>GesamtFehlversuche</MudTh>
-            <MudTh>MaxBenötigteZeit</MudTh>
-            <MudTh>GebrauchteZeit</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            @{
-                var rowColor = "";
-                if (context.Rang == 1)
-                {
-                    rowColor = "background-color: gold;"; // Gold for 1st place
+    @if (_selectedEvent != null)
+    {
+        <MudText Typo="Typo.h6">Dashboard @_selectedEvent.Bezeichnung</MudText>
+        <MudTable Items="@_rankingList" Hover="true" Striped="true" Dense="true" RowsPerPage="10">
+            <HeaderContent>
+                <MudTh>Rank</MudTh>
+                <MudTh>GruppenID</MudTh>
+                <MudTh>Gruppenname</MudTh>
+                <MudTh>GruppenleiterId</MudTh>
+                <MudTh>Teilnehmertyp</MudTh>
+                <MudTh>AbgeschlosseneLevel</MudTh>
+                <MudTh>AnzahlLevel</MudTh>
+                <MudTh>GesamtFehlversuche</MudTh>
+                <MudTh>MaxBenötigteZeit</MudTh>
+                <MudTh>GebrauchteZeit</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                @{
+                    var rowColor = "";
+                    if (context.Rang == 1)
+                    {
+                        rowColor = "background-color: gold;"; // Gold for 1st place
+                    }
+                    else if (context.Rang == 2)
+                    {
+                        rowColor = "background-color: silver;"; // Silver for 2nd place
+                    }
+                    else if (context.Rang == 3)
+                    {
+                        rowColor = "background-color: #cd7f32;"; // Bronze for 3rd place
+                    }
                 }
-                else if (context.Rang == 2)
-                {
-                    rowColor = "background-color: silver;"; // Silver for 2nd place
-                }
-                else if (context.Rang == 3)
-                {
-                    rowColor = "background-color: #cd7f32;"; // Bronze for 3rd place
-                }
-            }
-            <MudTd Style="@rowColor">@context.Rang</MudTd>
-            <MudTd Style="@rowColor">@context.GruppenID</MudTd>
-            <MudTd Style="@rowColor">@context.Gruppenname</MudTd>
-            <MudTd Style="@rowColor">@context.GruppenleiterId</MudTd>
-            <MudTd Style="@rowColor">@context.Teilnehmertyp</MudTd>
-            <MudTd Style="@rowColor">@context.AbgeschlosseneLevel</MudTd>
-            <MudTd Style="@rowColor">@context.AnzahlLevel</MudTd>
-            <MudTd Style="@rowColor">@context.GesamtFehlversuche</MudTd>
-            <MudTd Style="@rowColor">@context.MaxBenötigteZeit?.ToString(@"hh\:mm\:ss")</MudTd>
-            <MudTd Style="@rowColor">@context.GebrauchteZeit?.ToString(@"hh\:mm\:ss")</MudTd>
-        </RowTemplate>
-        <PagerContent>
-            <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
-        </PagerContent>
-    </MudTable>
+                <MudTd Style="@rowColor">@context.Rang</MudTd>
+                <MudTd Style="@rowColor">@context.GruppenID</MudTd>
+                <MudTd Style="@rowColor">@context.Gruppenname</MudTd>
+                <MudTd Style="@rowColor">@context.GruppenleiterId</MudTd>
+                <MudTd Style="@rowColor">@context.Teilnehmertyp</MudTd>
+                <MudTd Style="@rowColor">@context.AbgeschlosseneLevel</MudTd>
+                <MudTd Style="@rowColor">@context.AnzahlLevel</MudTd>
+                <MudTd Style="@rowColor">@context.GesamtFehlversuche</MudTd>
+                <MudTd Style="@rowColor">@context.MaxBenötigteZeit?.ToString(@"hh\:mm\:ss")</MudTd>
+                <MudTd Style="@rowColor">@context.GebrauchteZeit?.ToString(@"hh\:mm\:ss")</MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
+            </PagerContent>
+        </MudTable>
+    }
+    else
+    {
+        <MudText>Lade...</MudText>
+    }
 }

@@ -1,0 +1,99 @@
+﻿@page "/my-rank/{EventId:int}"
+
+<PageTitle>Event Ergebnis</PageTitle>
+
+@if (accessDenied)
+{
+    <header>
+        <h1 class="text-danger">Zugriff verweigert</h1>
+        <p class="text-danger">@accessDeniedMessage</p>
+    </header>
+}
+else if (_event != null)
+{
+    <MudText Typo="Typo.h4" Class="mb-4">Ergebnisse: @_event.Bezeichnung</MudText>
+    <MudText Typo="Typo.subtitle1" Class="mb-4">Top 10 Teilnehmer</MudText>
+
+    <MudTable Items="@_topRankingList" Hover="true" Striped="true" Dense="true" RowsPerPage="10">
+        <HeaderContent>
+            <MudTh>Rank</MudTh>
+            <MudTh>GruppenID</MudTh>
+            <MudTh>Gruppenname</MudTh>
+            <MudTh>GruppenleiterId</MudTh>
+            <MudTh>Teilnehmertyp</MudTh>
+            <MudTh>AbgeschlosseneLevel</MudTh>
+            <MudTh>AnzahlLevel</MudTh>
+            <MudTh>GesamtFehlversuche</MudTh>
+            <MudTh>MaxBenötigteZeit</MudTh>
+            <MudTh>GebrauchteZeit</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            @{
+                var rowColor = "";
+                if (context.Rang == 1)
+                {
+                    rowColor = "background-color: gold;"; // Gold for 1st place
+                }
+                else if (context.Rang == 2)
+                {
+                    rowColor = "background-color: silver;"; // Silver for 2nd place
+                }
+                else if (context.Rang == 3)
+                {
+                    rowColor = "background-color: #cd7f32;"; // Bronze for 3rd place
+                }
+            }
+            <MudTd Style="@rowColor">@context.Rang</MudTd>
+            <MudTd Style="@rowColor">@context.GruppenID</MudTd>
+            <MudTd Style="@rowColor">@context.Gruppenname</MudTd>
+            <MudTd Style="@rowColor">@context.GruppenleiterId</MudTd>
+            <MudTd Style="@rowColor">@context.Teilnehmertyp</MudTd>
+            <MudTd Style="@rowColor">@context.AbgeschlosseneLevel</MudTd>
+            <MudTd Style="@rowColor">@context.AnzahlLevel</MudTd>
+            <MudTd Style="@rowColor">@context.GesamtFehlversuche</MudTd>
+            <MudTd Style="@rowColor">@context.MaxBenötigteZeit?.ToString(@"hh\:mm\:ss")</MudTd>
+            <MudTd Style="@rowColor">@context.GebrauchteZeit?.ToString(@"hh\:mm\:ss")</MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
+        </PagerContent>
+    </MudTable>
+
+    @if (showUserEntry)
+    {
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.subtitle1" Class="mb-2">Ihre Position</MudText>
+        <MudPaper Class="pa-4">
+            <MudTable Items="@(new[] { _userRankingEntry })" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh>Rang</MudTh>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Teilnehmertyp</MudTh>
+                    <MudTh>Abgeschlossene Level</MudTh>
+                    <MudTh>Fehlversuche</MudTh>
+                    <MudTh>Zeit</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="entry">
+                    <MudTd Style="background-color: #e3f2fd; outline: 3px solid #1976d2; outline-offset: -3px;">@entry.Rang</MudTd>
+                    <MudTd Style="background-color: #e3f2fd; outline: 3px solid #1976d2; outline-offset: -3px;">@(string.IsNullOrEmpty(entry.Gruppenname) ? $"Spieler {entry.GruppenleiterId}" : entry.Gruppenname)</MudTd>
+                    <MudTd Style="background-color: #e3f2fd; outline: 3px solid #1976d2; outline-offset: -3px;">@entry.Teilnehmertyp</MudTd>
+                    <MudTd Style="background-color: #e3f2fd; outline: 3px solid #1976d2; outline-offset: -3px;">@entry.AnzahlLevel</MudTd>
+                    <MudTd Style="background-color: #e3f2fd; outline: 3px solid #1976d2; outline-offset: -3px;">@entry.GesamtFehlversuche</MudTd>
+                    <MudTd Style="background-color: #e3f2fd; outline: 3px solid #1976d2; outline-offset: -3px;">@entry.GebrauchteZeit?.ToString(@"hh\:mm\:ss")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+
+    <div class="mt-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Link="/dashboard">
+            Zurück zum Dashboard
+        </MudButton>
+    </div>
+}
+else
+{
+    <MudProgressCircular Indeterminate="true" />
+    <MudText>Lade Ergebnisse...</MudText>
+}

@@ -6,17 +6,27 @@ using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using System.Timers;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Components.Routing;
+using VCC_Projekt.Components.Account.Pages;
 
 namespace VCC_Projekt.Components.Pages
 {
     public partial class Dashboard : IDisposable
     {
+        [Inject]
+        private NavigationManager NavigationManager { get; set; }
+
+        [Parameter]
+        public int? EventId { get; set; }
+
         private List<Event> _events = new();
         private Event _selectedEvent;
         private List<RanglisteResult> _rankingList = new();
         private List<Participants> _participants = new();
         private System.Timers.Timer _refreshTimer;
-        private bool isRanking = false; // New variable to check if ranking is populated
+        private bool isRanking = false;
+        private bool accessDenied;
+        private string accessDeniedMessage = "";
 
         protected override void OnInitialized()
         {
@@ -24,46 +34,149 @@ namespace VCC_Projekt.Components.Pages
             {
                 var now = DateTime.Now;
                 _events = dbContext.Events
-                    .Where(x => x.Beginn <= now && x.Beginn.AddMinutes(x.Dauer) > now)
+                    .Where(x => x.Beginn <= now)
                     .OrderByDescending(ev => ev.Beginn)
                     .ToList();
 
-                // Automatically select the first event if there are multiple events
                 if (_events.Count > 0)
                 {
-                    _selectedEvent = _events[0];
-                    LoadRanking(_selectedEvent.EventID); // Load ranking for the default selected event
+                    // If we have an EventId parameter, try to find that event
+                    if (EventId.HasValue)
+                    {
+                        var eventFromUrl = _events.FirstOrDefault(e => e.EventID == EventId.Value);
+                        if (eventFromUrl != null)
+                        {
+                            _selectedEvent = eventFromUrl;
+                        }
+                        else
+                        {
+                            // If the specified event doesn't exist, set access denied
+                            accessDenied = true;
+                            accessDeniedMessage = $"Event mit ID {EventId.Value} existiert nicht oder ist noch nicht begonnen.";
+                            return; // Early return to stop further processing
+                        }
+                    }
+                    else
+                    {
+                        // No event specified in URL, use the first event
+                        _selectedEvent = _events[0];
+
+                        // Only redirect if we haven't encountered an error
+                        if (!accessDenied)
+                        {
+                            NavigationManager.NavigateTo($"/dashboard/{_selectedEvent.EventID}", false);
+                        }
+                    }
+
+                    // Only load ranking if we haven't encountered an error
+                    if (!accessDenied)
+                    {
+                        LoadRanking(_selectedEvent.EventID);
+                    }
+                }
+                else
+                {
+                    // No events found
+                    accessDenied = true;
+                    accessDeniedMessage = "Keine Veranstaltungen finden derzeit statt.";
+                    return; // Early return
                 }
 
-                // Initialize and start the timer to refresh the ranking every 5 seconds
-                _refreshTimer = new System.Timers.Timer(5000); // 5000 milliseconds = 5 seconds
-                _refreshTimer.Elapsed += RefreshRanking;
-                _refreshTimer.AutoReset = true;
-                _refreshTimer.Enabled = true;
+                // Only initialize timer if access is not denied
+                if (!accessDenied)
+                {
+                    InitializeRefreshTimer();
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error loading events: {ex.Message}");
                 _events = new List<Event>();
+                accessDenied = true;
+                accessDeniedMessage = $"Fehler: {ex.Message}";
+                // Do not start timer
+            }
+        }
+
+        private void InitializeRefreshTimer()
+        {
+            // Clean up any existing timer
+            _refreshTimer?.Dispose();
+
+            // Create new timer
+            _refreshTimer = new System.Timers.Timer(5000);
+            _refreshTimer.Elapsed += RefreshRanking;
+            _refreshTimer.AutoReset = true;
+            _refreshTimer.Enabled = true;
+        }
+
+        protected override void OnParametersSet()
+        {
+            // Reset access denied with each parameter change
+            if (EventId.HasValue && _events.Any())
+            {
+                var eventFromUrl = _events.FirstOrDefault(e => e.EventID == EventId.Value);
+                if (eventFromUrl != null)
+                {
+                    accessDenied = false; // Reset access denied status
+
+                    if (_selectedEvent == null || _selectedEvent.EventID != eventFromUrl.EventID)
+                    {
+                        _selectedEvent = eventFromUrl;
+                        LoadRanking(_selectedEvent.EventID);
+
+                        // Make sure timer is running
+                        if (_refreshTimer == null || !_refreshTimer.Enabled)
+                        {
+                            InitializeRefreshTimer();
+                        }
+                    }
+                }
+                else
+                {
+                    // Event ID exists in URL but event not found
+                    accessDenied = true;
+                    accessDeniedMessage = $"Event mit ID {EventId.Value} existiert nicht oder hat noch nicht begonnen.";
+                    StopTimer();
+                }
+            }
+        }
+
+        private void StopTimer()
+        {
+            if (_refreshTimer != null)
+            {
+                _refreshTimer.Enabled = false;
             }
         }
 
         private async void RefreshRanking(object sender, ElapsedEventArgs e)
         {
-            if (_selectedEvent != null)
+            // Only refresh if not in access denied state
+            if (!accessDenied && _selectedEvent != null)
             {
                 await InvokeAsync(() =>
                 {
-                    LoadRanking(_selectedEvent.EventID);
-                    StateHasChanged(); // Notify the component that the state has changed
+                    try
+                    {
+                        LoadRanking(_selectedEvent.EventID);
+                        StateHasChanged();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error refreshing ranking: {ex.Message}");
+                        accessDenied = true;
+                        accessDeniedMessage = $"Fehler beim Aktualisieren: {ex.Message}";
+                        StopTimer();
+                        StateHasChanged();
+                    }
                 });
             }
-        }
-
-        private async Task OnEventSelected(Event selectedEvent)
-        {
-            _selectedEvent = selectedEvent; // Store the selected event
-            LoadRanking(selectedEvent.EventID); // Load ranking for the newly selected event
+            else
+            {
+                // If we're in access denied state, stop refreshing
+                StopTimer();
+            }
         }
 
         private void LoadRanking(int eventId)
@@ -150,13 +263,22 @@ namespace VCC_Projekt.Components.Pages
             {
                 Console.WriteLine($"Error loading ranking: {ex.Message}");
                 _rankingList = new List<RanglisteResult>();
+                accessDenied = true;
+                accessDeniedMessage = $"Fehler beim Laden der Rangliste: {ex.Message}";
+                StopTimer();
             }
         }
 
         public void Dispose()
         {
             // Dispose of the timer when the component is disposed
-            _refreshTimer?.Dispose();
+            if (_refreshTimer != null)
+            {
+                _refreshTimer.Enabled = false;
+                _refreshTimer.Elapsed -= RefreshRanking;
+                _refreshTimer.Dispose();
+                _refreshTimer = null;
+            }
         }
     }
 }
