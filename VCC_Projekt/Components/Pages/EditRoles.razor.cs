@@ -247,6 +247,4 @@ namespace VCC_Projekt.Components.Pages
             return $"{Username} ({Email})";
         }
     }
-
-
 }

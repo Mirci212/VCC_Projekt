@@ -94,21 +94,32 @@
                 };
             if (baseMessageMail != null)
             {
-                string layout = @"<div id='x_appendonsend'></div>
-                                <hr tabindex='-1' style='display:inline-block; width:98%'>
-                                <div id='x_divRplyFwdMsg' dir='ltr'><font face='Calibri, sans-serif' color='#000000' style='font-size:11pt'><b>Von:</b> " + emailSender.emailAddress + @"<br>
-                                <b>Gesendet:</b> " + DateTime.Now.ToString("dddd, dd. MMMM yyyy HH:mm") + @" <br>
-                                <b>An:</b> " + tempFixedEmail + @" <br>
-                                <b>Betreff:</b> " + Subject + @"</font>
-                                <div>&nbsp;</div>
-                                </div>
-                                <div>
-                                <p>" + baseMessageMail.HtmlBody + @"</p>
-                                </div>";
+                string layout = $@"<div id='x_appendonsend'></div>
+                    <hr tabindex='-1' style='display:inline-block; width:98%'>
+                    <div id='x_divRplyFwdMsg' dir='ltr'><font face='Calibri, sans-serif' color='#000000' style='font-size:11pt'><b>Von:</b> {emailSender.emailAddress}<br>
+                    <b>Gesendet:</b> {DateTime.Now:dddd, dd. MMMM yyyy HH:mm} <br>
+                    <b>An:</b> {tempFixedEmail} <br>
+                    <b>Betreff:</b> {Subject}</font>
+                    <div>&nbsp;</div>
+                    </div>
+                    <div>
+                    <p>{baseMessageMail.HtmlBody}</p>
+                    </div>";
 
                 message.Headers.Add("In-Reply-To", $"<{baseMessageMail.MessageId}>");
-                message.Headers.Add("References", $"<{baseMessageMail.MessageId}>");
-                message.Body = message.Body + layout;
+
+                // Füge die vorherigen Message-IDs zum References-Header hinzu
+                var references = baseMessageMail.Headers["References"];
+                if (!string.IsNullOrEmpty(references))
+                {
+                    message.Headers.Add("References", $"{references} <{baseMessageMail.MessageId}>");
+                }
+                else
+                {
+                    message.Headers.Add("References", $"<{baseMessageMail.MessageId}>");
+                }
+
+                message.Body += layout;
             }
 
             message.To.Add(tempFixedEmail);

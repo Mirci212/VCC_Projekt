@@ -6,9 +6,9 @@
 @using System.Net.Mail
 
 <MudTabs Elevation="2" Rounded="true" Centered="true" @bind-ActiveTabIndex="activeTabIndex" ActivePanelIndexChanged="() => ClearSelectedEmails()">
-    <MudTabPanel ToolTip="Unbeantwortet" Icon="@Icons.Material.Filled.MarkEmailUnread" BadgeColor="Color.Info" BadgeData="@unansweredEmails.Count">
+    <MudTabPanel ToolTip="Unbeantwortet" Icon="@Icons.Material.Filled.MarkEmailUnread" BadgeColor="Color.Info" BadgeData="@groupedUnansweredEmails.Count">
         <br />
-        <MudDataGrid T="MimeMessage" Items="unansweredEmails" MultiSelection="true" SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@_quickFilter" SelectedItems="selectedEmails" SelectedItemsChanged="e => UpdateSelection(e)">
+        <MudDataGrid T="EmailGroup" Items="groupedUnansweredEmails" MultiSelection="true" SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@_quickFilter" SelectedItems="selectedEmailGroups" SelectedItemsChanged="e => UpdateSelection(e)">
             <ToolBarContent>
                 <MudText Typo="Typo.h6">Unbeantwortete E-Mails</MudText>
                 <MudSpacer />
@@ -18,27 +18,45 @@
                               AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" />
             </ToolBarContent>
             <Columns>
-                <SelectColumn T="MimeMessage" />
-                <PropertyColumn Property="x => x.From.ToString()" Title="Absender" />
-                <PropertyColumn Property="x => x.Subject" Title="Betreff" />
-                <PropertyColumn Property="x => x.Date.DateTime" Title="Datum" Format="dd.MM.yyyy HH:mm" />
+                <HierarchyColumn T="EmailGroup" ButtonDisabledFunc="x => x.Replies.Count == 0" />
+                <SelectColumn T="EmailGroup" />
+                <PropertyColumn Property="x => x.OriginalEmail.From.Mailboxes.FirstOrDefault().Address.ToString()" Title="Absender" />
+                <PropertyColumn Property="x => string.Join(',',x.OriginalEmail.To.Mailboxes.Select(s => s.Address))" Title="Empfänger" />
+                <PropertyColumn Property="x => x.OriginalEmail.Subject" Title="Betreff" />
+                <PropertyColumn Property="x => x.OriginalEmail.Date.DateTime" Title="Datum" Format="dd.MM.yyyy HH:mm" />
                 <TemplateColumn Title="Aktionen">
                     <CellTemplate>
-                        <MudIconButton Icon="@Icons.Material.Filled.Email" Color="Color.Primary" OnClick="() => OpenEmailDialog(context.Item)" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Secondary" OnClick="() => ReadEmailBody(context.Item)" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => DeleteEmail(context.Item)" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Email" Color="Color.Primary" OnClick="() => OpenEmailDialog(context.Item.OriginalEmail)" Disabled="@(context.Item.OriginalEmail.From.Mailboxes.Any(m => m.Address.Equals(EmailService.emailAddress, StringComparison.OrdinalIgnoreCase)))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Secondary" OnClick="() => ReadEmailBody(context.Item.OriginalEmail)" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => DeleteEmailThread(context.Item)" />
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
+            <ChildRowContent>
+                <MudDataGrid T="MimeMessage" Items="context.Item.Replies" MultiSelection="false" SortMode="SortMode.None" Filterable="false">
+                    <Columns>
+                        <PropertyColumn Property="x => x.From.Mailboxes.FirstOrDefault().Address.ToString()" Title="Absender" />
+                        <PropertyColumn Property="x => string.Join(',',x.To.Mailboxes.Select(s => s.Address))" Title="Empfänger" />
+                        <PropertyColumn Property="x => x.Subject" Title="Betreff" />
+                        <PropertyColumn Property="x => x.Date.DateTime" Title="Datum" Format="dd.MM.yyyy HH:mm" />
+                        <TemplateColumn Title="Aktionen" Context="child_context">
+                            <CellTemplate Context="child_context">
+                                <MudIconButton Icon="@Icons.Material.Filled.Email" Color="Color.Primary" OnClick="() => OpenEmailDialog(child_context.Item)" Disabled="@(child_context.Item.From.Mailboxes.Any(m => m.Address.Equals(EmailService.emailAddress, StringComparison.OrdinalIgnoreCase)))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Secondary" OnClick="() => ReadEmailBody(child_context.Item)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => DeleteEmail(child_context.Item)" />
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            </ChildRowContent>
             <PagerContent>
-                <MudDataGridPager T="MimeMessage" />
+                <MudDataGridPager T="EmailGroup" />
             </PagerContent>
         </MudDataGrid>
     </MudTabPanel>
-
-    <MudTabPanel ToolTip="Beantwortet" Icon="@Icons.Material.Filled.MarkEmailRead" BadgeColor="Color.Info" BadgeData="@answeredEmails.Count">
+    <MudTabPanel ToolTip="Beantwortet" Icon="@Icons.Material.Filled.MarkEmailRead" BadgeColor="Color.Info" BadgeData="@groupedAnsweredEmails.Count">
         <br />
-        <MudDataGrid T="MimeMessage" Items="@answeredEmails" MultiSelection="true" SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@_quickFilter" SelectedItems="selectedEmails" SelectedItemsChanged="e => UpdateSelection(e)">
+        <MudDataGrid T="EmailGroup" Items="groupedAnsweredEmails" MultiSelection="true" SortMode="SortMode.Multiple" Filterable="true" QuickFilter="@_quickFilter" SelectedItems="selectedEmailGroups" SelectedItemsChanged="e => UpdateSelection(e)">
             <ToolBarContent>
                 <MudText Typo="Typo.h6">Beantwortete E-Mails</MudText>
                 <MudSpacer />
@@ -48,20 +66,39 @@
                               AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0" />
             </ToolBarContent>
             <Columns>
-                <SelectColumn T="MimeMessage" />
-                <PropertyColumn Property="x => x.From.ToString()" Title="Absender" />
-                <PropertyColumn Property="x => x.Subject" Title="Betreff" />
-                <PropertyColumn Property="x => x.Date.DateTime" Title="Datum" Format="dd.MM.yyyy HH:mm" />
+                <HierarchyColumn T="EmailGroup" ButtonDisabledFunc="x => x.Replies.Count == 0" />
+                <SelectColumn T="EmailGroup" />
+                <PropertyColumn Property="x => x.OriginalEmail.From.Mailboxes.FirstOrDefault().Address.ToString()" Title="Absender" />
+                <PropertyColumn Property="x => string.Join(',',x.OriginalEmail.To.Mailboxes.Select(s => s.Address))" Title="Empfänger" />
+                <PropertyColumn Property="x => x.OriginalEmail.Subject" Title="Betreff" />
+                <PropertyColumn Property="x => x.OriginalEmail.Date.DateTime" Title="Datum" Format="dd.MM.yyyy HH:mm" />
                 <TemplateColumn Title="Aktionen">
                     <CellTemplate>
-                        <MudIconButton Icon="@Icons.Material.Filled.Email" Color="Color.Primary" OnClick="() => OpenEmailDialog(context.Item)" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Secondary" OnClick="() => ReadEmailBody(context.Item)" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => DeleteEmail(context.Item)" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Email" Color="Color.Primary" OnClick="() => OpenEmailDialog(context.Item.OriginalEmail)" Disabled="@(context.Item.OriginalEmail.From.Mailboxes.Any(m => m.Address.Equals(EmailService.emailAddress, StringComparison.OrdinalIgnoreCase)))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Secondary" OnClick="() => ReadEmailBody(context.Item.OriginalEmail)" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => DeleteEmailThread(context.Item)" />
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
+            <ChildRowContent>
+                <MudDataGrid T="MimeMessage" Items="context.Item.Replies" MultiSelection="false" SortMode="SortMode.None" Filterable="false">
+                    <Columns>
+                        <PropertyColumn Property="x => x.From.Mailboxes.FirstOrDefault().Address.ToString()" Title="Absender" />
+                        <PropertyColumn Property="x => string.Join(',',x.To.Mailboxes.Select(s => s.Address))" Title="Empfänger" />
+                        <PropertyColumn Property="x => x.Subject" Title="Betreff" />
+                        <PropertyColumn Property="x => x.Date.DateTime" Title="Datum" Format="dd.MM.yyyy HH:mm" />
+                        <TemplateColumn Title="Aktionen" Context="child_context">
+                            <CellTemplate Context="child_context">
+                                <MudIconButton Icon="@Icons.Material.Filled.Email" Color="Color.Primary" OnClick="() => OpenEmailDialog(child_context.Item)" Disabled="@(child_context.Item.From.Mailboxes.Any(m => m.Address.Equals(EmailService.emailAddress, StringComparison.OrdinalIgnoreCase)))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Secondary" OnClick="() => ReadEmailBody(child_context.Item)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="() => DeleteEmail(child_context.Item)" />
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            </ChildRowContent>
             <PagerContent>
-                <MudDataGridPager T="MimeMessage" />
+                <MudDataGridPager T="EmailGroup" />
             </PagerContent>
         </MudDataGrid>
     </MudTabPanel>

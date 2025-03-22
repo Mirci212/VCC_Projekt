@@ -108,9 +108,6 @@
     </div>
 </div>
 
-<EmailSendDialog SelectedEmails="@selectedEmails" 
-    Emails="@users.Where(em => !string.IsNullOrEmpty(em.Email)).Select(us => us.Email).ToList()" ReadOnly="false" UseDropdown="true"/>
-
 <style>
     body {
         background-color: #f8f9fa;
