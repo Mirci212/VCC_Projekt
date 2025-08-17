@@ -2,8 +2,8 @@
 
 [![DeepWiki Doc](https://devin.ai/assets/askdeepwiki.png)](https://deepwiki.com/Mirci212/VCC_Projekt)
 
+[Currently Hosting](https://vcc.htlvb.at)
 
-[Currently Hosting: www.vcc.htlvb.at](https://vcc.htlvb.at)
 ## Dokumenten-Historie
 
 | Datum       | Verantwortlich | Änderung                          |
