@@ -1,5 +1,7 @@
 # VCC - Vöcklaprogger Coding Contest
 
+[![DeepWiki Doc](https://devin.ai/assets/askdeepwiki.png)](https://deepwiki.com/Mirci212/VCC_Projekt)
+
 ## Dokumenten-Historie
 
 | Datum       | Verantwortlich | Änderung                          |
